@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1120" viewBox="0 0 1800 1120" role="img" aria-labelledby="title desc">
+  <title id="title">Aquarium Controller Detailed Circuit Diagram</title>
+  <desc id="desc">Readable circuit diagram with explicit pin labels and routed arrows for ESP32, DS18B20, relay module, pull-up resistor, and AC load path.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f4f7fb; }
+      .panel { fill: #ffffff; stroke: #2c3e50; stroke-width: 2; }
+      .subpanel { fill: #fcfdff; stroke: #7f8c8d; stroke-width: 1.5; }
+      .title { font: 700 34px Arial, sans-serif; fill: #111; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #333; }
+      .heading { font: 700 23px Arial, sans-serif; fill: #111; }
+      .label { font: 700 17px Arial, sans-serif; fill: #111; }
+      .small { font: 400 14px Arial, sans-serif; fill: #222; }
+      .io { font: 600 13px Arial, sans-serif; fill: #1f2937; }
+      .node { fill: #fff; stroke: #455a64; stroke-width: 2; }
+      .note { fill: #fff8e1; stroke: #ffb300; stroke-width: 1.5; }
+      .legendbox { fill: #f8fafc; stroke: #90a4ae; stroke-width: 1.5; }
+      .wire3v3 { stroke: #c62828; stroke-width: 4; fill: none; }
+      .wiregnd { stroke: #212121; stroke-width: 4; fill: none; }
+      .wiredata { stroke: #1565c0; stroke-width: 4; fill: none; }
+      .wirectl { stroke: #ef6c00; stroke-width: 4; fill: none; }
+      .wireac { stroke: #6a1b9a; stroke-width: 4; fill: none; }
+    </style>
+
+    <marker id="arrow-red" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#c62828" />
+    </marker>
+    <marker id="arrow-black" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#212121" />
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#1565c0" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#ef6c00" />
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#6a1b9a" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1120"/>
+
+  <text class="title" x="900" y="50" text-anchor="middle">Aquarium Controller Detailed Circuit Diagram</text>
+  <text class="subtitle" x="900" y="80" text-anchor="middle">ESP32 Dev Board (ESP32-WROOM-32) + DS18B20 + 3V relay + manual AC switch</text>
+
+  <rect class="panel" x="40" y="110" width="1720" height="970" rx="10"/>
+
+  <rect class="subpanel" x="70" y="145" width="980" height="860" rx="8"/>
+  <text class="heading" x="95" y="180">Low-Voltage Control (inside enclosure)</text>
+
+  <rect class="node" x="120" y="240" width="300" height="190" rx="8"/>
+  <text class="label" x="270" y="275" text-anchor="middle">ESP32 Dev Board</text>
+  <text class="small" x="270" y="300" text-anchor="middle">ESP32-WROOM-32</text>
+  <text class="io" x="140" y="335">Inputs: USB-C power</text>
+  <text class="io" x="140" y="360">Outputs: GPIO25 (relay IN)</text>
+  <text class="io" x="140" y="383">Outputs: GPIO26 (TEMP_DATA)</text>
+  <text class="io" x="140" y="406">Power pins: 3.3V, GND</text>
+
+  <rect class="node" x="120" y="500" width="250" height="95" rx="8"/>
+  <text class="label" x="245" y="538" text-anchor="middle">3.3V Rail</text>
+  <text class="io" x="138" y="565">Output: 3.3V distribution</text>
+
+  <rect class="node" x="120" y="640" width="250" height="95" rx="8"/>
+  <text class="label" x="245" y="678" text-anchor="middle">GND Rail</text>
+  <text class="io" x="138" y="705">Output: common ground</text>
+
+  <rect class="node" x="620" y="210" width="340" height="165" rx="8"/>
+  <text class="label" x="790" y="248" text-anchor="middle">DS18B20 Probe</text>
+  <text class="io" x="640" y="282">Inputs: VDD, DATA, GND</text>
+  <text class="io" x="640" y="308">Typical lead colors:</text>
+  <text class="io" x="640" y="334">Red=VDD, Black=GND, Yellow/White=DATA</text>
+
+  <rect class="node" x="620" y="405" width="340" height="170" rx="8"/>
+  <text class="label" x="790" y="442" text-anchor="middle">Relay Module (LV)</text>
+  <text class="io" x="640" y="472">Inputs: VCC, GND, IN</text>
+  <text class="io" x="640" y="500">IN is 3.3V logic from GPIO25</text>
+  <text class="io" x="640" y="528">Contacts are isolated from LV side</text>
+
+  <rect class="node" x="620" y="620" width="380" height="135" rx="8"/>
+  <text class="label" x="810" y="656" text-anchor="middle">R1 Pull-up Resistor (4.7k)</text>
+  <text class="io" x="640" y="688">Input pin 1: DATA side</text>
+  <text class="io" x="640" y="714">Input pin 2: 3.3V side</text>
+
+  <!-- LV wiring: all arrows start on right side and end on left side -->
+  <polyline class="wire3v3" points="370,540 500,540 500,248 620,248" marker-end="url(#arrow-red)"/>
+  <text class="small" x="880" y="232">probe VDD</text>
+
+  <polyline class="wire3v3" points="370,540 520,540 520,468 620,468" marker-end="url(#arrow-red)"/>
+  <text class="small" x="880" y="454">relay VCC</text>
+
+  <polyline class="wire3v3" points="370,540 540,540 540,714 620,714" marker-end="url(#arrow-red)"/>
+  <text class="small" x="880" y="702">R1 pin2 3.3V</text>
+
+  <polyline class="wiregnd" points="370,688 470,688 470,282 620,282" marker-end="url(#arrow-black)"/>
+  <text class="small" x="880" y="268">probe GND</text>
+
+  <polyline class="wiregnd" points="370,688 490,688 490,500 620,500" marker-end="url(#arrow-black)"/>
+  <text class="small" x="880" y="488">relay GND</text>
+
+  <polyline class="wiredata" points="420,383 560,383 560,316 620,316" marker-end="url(#arrow-blue)"/>
+  <text class="small" x="880" y="302">probe DATA (GPIO26)</text>
+
+  <polyline class="wiredata" points="420,383 580,383 580,688 620,688" marker-end="url(#arrow-blue)"/>
+  <text class="small" x="880" y="676">R1 pin1 DATA</text>
+
+  <polyline class="wirectl" points="420,360 550,360 550,532 620,532" marker-end="url(#arrow-orange)"/>
+  <text class="small" x="880" y="522">relay IN (GPIO25)</text>
+
+  <!-- AC side -->
+  <rect class="subpanel" x="1080" y="145" width="650" height="860" rx="8"/>
+  <text class="heading" x="1105" y="180">AC Load Path (outside enclosure)</text>
+
+  <rect class="node" x="1090" y="420" width="110" height="108" rx="8"/>
+  <text class="label" x="1145" y="454" text-anchor="middle">AC Outlet</text>
+  <text class="io" x="1100" y="480">Out: line</text>
+  <text class="io" x="1100" y="500">neutral</text>
+
+  <rect class="node" x="1215" y="420" width="110" height="108" rx="8"/>
+  <text class="label" x="1270" y="454" text-anchor="middle">Manual</text>
+  <text class="label" x="1270" y="472" text-anchor="middle">Switch</text>
+  <text class="io" x="1225" y="498">In: line</text>
+  <text class="io" x="1225" y="516">Out: line</text>
+
+  <rect class="node" x="1340" y="420" width="110" height="108" rx="8"/>
+  <text class="label" x="1395" y="454" text-anchor="middle">Relay</text>
+  <text class="label" x="1395" y="472" text-anchor="middle">Contacts</text>
+  <text class="io" x="1350" y="498">In: COM</text>
+  <text class="io" x="1350" y="516">Out: NO</text>
+
+  <rect class="node" x="1465" y="420" width="110" height="108" rx="8"/>
+  <text class="label" x="1520" y="454" text-anchor="middle">LED PSU</text>
+  <text class="io" x="1475" y="480">In: AC</text>
+  <text class="io" x="1475" y="500">Out: DC</text>
+
+  <rect class="node" x="1590" y="420" width="110" height="108" rx="8"/>
+  <text class="label" x="1645" y="454" text-anchor="middle">Aquarium</text>
+  <text class="label" x="1645" y="472" text-anchor="middle">LEDs</text>
+  <text class="io" x="1600" y="498">In: DC</text>
+  <text class="io" x="1600" y="516">from PSU</text>
+
+  <!-- AC arrows with clear lanes (no box/text overlap) -->
+  <polyline class="wireac" points="1200,446 1215,446" marker-end="url(#arrow-purple)"/>
+  <text class="small" x="1142" y="404">line -> manual switch</text>
+
+  <polyline class="wireac" points="1325,446 1340,446" marker-end="url(#arrow-purple)"/>
+  <text class="small" x="1252" y="404">manual -> relay COM</text>
+
+  <polyline class="wireac" points="1450,446 1465,446" marker-end="url(#arrow-purple)"/>
+  <text class="small" x="1376" y="404">relay NO -> PSU AC in</text>
+
+  <polyline class="wireac" points="1575,446 1590,446" marker-end="url(#arrow-purple)"/>
+  <text class="small" x="1502" y="404">PSU DC out -> LEDs</text>
+
+  <polyline class="wirectl" points="960,532 1000,532 1000,560 1320,560 1320,490 1340,490" stroke-dasharray="8 6" marker-end="url(#arrow-orange)"/>
+  <text class="small" x="1012" y="548">relay coil ctrl (GPIO25)</text>
+
+  <!-- Critical note below all component boxes -->
+  <rect class="note" x="95" y="850" width="950" height="120" rx="8"/>
+  <text class="label" x="120" y="888">Critical DS18B20 Rule</text>
+  <text class="small" x="120" y="918">Wire DATA directly to GPIO26, then add a 4.7k pull-up from DATA to 3.3V.</text>
+  <text class="small" x="120" y="944">Do not place the resistor in series with the DATA line. Manual switch always overrides software state.</text>
+
+  <rect class="legendbox" x="70" y="1018" width="1660" height="48" rx="8"/>
+  <text class="label" x="90" y="1048">Legend</text>
+  <line class="wire3v3" x1="220" y1="1042" x2="270" y2="1042"/>
+  <text class="small" x="280" y="1047">3.3V</text>
+  <line class="wiregnd" x1="360" y1="1042" x2="410" y2="1042"/>
+  <text class="small" x="420" y="1047">GND</text>
+  <line class="wiredata" x1="500" y1="1042" x2="550" y2="1042"/>
+  <text class="small" x="560" y="1047">TEMP DATA (GPIO26)</text>
+  <line class="wirectl" x1="780" y1="1042" x2="830" y2="1042"/>
+  <text class="small" x="840" y="1047">Relay control (GPIO25)</text>
+  <line class="wireac" x1="1100" y1="1042" x2="1150" y2="1042"/>
+  <text class="small" x="1160" y="1047">AC load path</text>
+</svg>
