@@ -7,6 +7,7 @@
 #include <WiFiManager.h>
 
 #include "aquarium.h"
+#include "probe_schedule.h"
 
 // Hardware pin map (ESP32 Dev Board)
 #ifndef RELAY_PIN
@@ -36,7 +37,11 @@ DallasTemperature tempSensors(&oneWire);
 aquarium::Temperature temperature;
 unsigned long lastTempReadMs = 0;
 const unsigned long TEMP_REFRESH_MS = 5000;
+const unsigned long TEMP_MAX_AGE_MS = 60000;
 unsigned long resetPressedSinceMs = 0;
+aquarium::ProbeSchedule probe(TEMP_REFRESH_MS, 750);
+bool haveValidReading = false;
+unsigned long lastValidReadingMs = 0;
 
 aquarium::Snapshot snapshot() {
   aquarium::Snapshot s;
@@ -51,15 +56,22 @@ aquarium::Snapshot snapshot() {
   return s;
 }
 
-void refreshTemperature(bool forceRead = false) {
-  unsigned long now = millis();
-  if (!forceRead && (now - lastTempReadMs) < TEMP_REFRESH_MS) {
-    return;
+void pollTemperature() {
+  switch (probe.next(millis())) {
+    case aquarium::ProbeAction::Request:
+      tempSensors.requestTemperatures();
+      break;
+    case aquarium::ProbeAction::Read:
+      temperature = aquarium::applyReading(temperature, tempSensors.getTempCByIndex(0));
+      lastTempReadMs = millis();
+      if (temperature.present) {
+        haveValidReading = true;
+        lastValidReadingMs = lastTempReadMs;
+      }
+      break;
+    default:
+      break;
   }
-
-  tempSensors.requestTemperatures();
-  temperature = aquarium::applyReading(temperature, tempSensors.getTempCByIndex(0));
-  lastTempReadMs = now;
 }
 
 // Joins the saved Wi-Fi network. With none saved, or if it cannot be reached,
@@ -95,8 +107,7 @@ void checkWiFiResetButton() {
 }
 
 void sendTemperature(bool fahrenheit) {
-  refreshTemperature(true);
-  if (!temperature.present) {
+  if (!aquarium::readingFresh(haveValidReading, lastValidReadingMs, millis(), TEMP_MAX_AGE_MS)) {
     server.send(503, "text/plain", "Temperature probe unavailable");
     return;
   }
@@ -112,8 +123,7 @@ void setup() {
   pinMode(WIFI_RESET_PIN, INPUT_PULLUP);
 
   tempSensors.begin();
-  tempSensors.setWaitForConversion(true);
-  refreshTemperature(true);
+  tempSensors.setWaitForConversion(false);
 
   Serial.println("Relay initialized.");
   connectWiFi();
@@ -144,12 +154,10 @@ void setup() {
   server.on("/temperature/f", []() { sendTemperature(true); });
 
   server.on("/status/json", []() {
-    refreshTemperature(true);
     server.send(200, "application/json", aquarium::statusJson(snapshot()).c_str());
   });
 
   server.on("/homebridge/payload", []() {
-    refreshTemperature(true);
     server.send(200, "application/json", aquarium::homebridgeJson(snapshot()).c_str());
   });
 
@@ -158,6 +166,6 @@ void setup() {
 
 void loop() {
   checkWiFiResetButton();
-  refreshTemperature(false);
+  pollTemperature();
   server.handleClient();
 }
