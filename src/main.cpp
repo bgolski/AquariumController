@@ -5,8 +5,10 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <WiFiManager.h>
+#include <Preferences.h>
 
 #include "aquarium.h"
+#include "relay.h"
 #include "probe_schedule.h"
 
 // Hardware pin map (ESP32 Dev Board)
@@ -32,6 +34,7 @@ const unsigned long WIFI_RESET_HOLD_MS = 5000;
 
 WebServer server(80);
 bool lightOn = false;
+Preferences preferences;
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature tempSensors(&oneWire);
 aquarium::Temperature temperature;
@@ -115,11 +118,19 @@ void sendTemperature(bool fahrenheit) {
   server.send(200, "text/plain", aquarium::formatTwoDecimals(value).c_str());
 }
 
+// Switches the light and remembers the choice across restarts.
+void setLight(bool on) {
+  lightOn = on;
+  digitalWrite(RELAY_PIN, aquarium::relayLevel(on) ? HIGH : LOW);
+  preferences.putInt("light", on ? 1 : 0);
+}
+
 void setup() {
   Serial.begin(115200);
 
+  preferences.begin("aquarium", false);
   pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, HIGH); // relay OFF initially
+  setLight(aquarium::restoredLightState(preferences.getInt("light", -1)));
   pinMode(WIFI_RESET_PIN, INPUT_PULLUP);
 
   tempSensors.begin();
@@ -135,14 +146,12 @@ void setup() {
   }
 
   server.on("/light/on", []() {
-    digitalWrite(RELAY_PIN, HIGH);
-    lightOn = true;
+    setLight(true);
     server.send(200, "text/plain", "Light turned ON");
   });
 
   server.on("/light/off", []() {
-    digitalWrite(RELAY_PIN, LOW);
-    lightOn = false;
+    setLight(false);
     server.send(200, "text/plain", "Light turned OFF");
   });
 
