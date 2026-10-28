@@ -4,18 +4,9 @@
 #include <ESPmDNS.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <math.h>
+#include <WiFiManager.h>
 
-// Fallback defaults if .env vars aren't injected
-#ifndef WIFI_SSID
-#define WIFI_SSID "your_default_ssid"
-#warning "WIFI_SSID not defined, using fallback default"
-#endif
-
-#ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "your_default_password"
-#warning "WIFI_PASSWORD not defined, using fallback default"
-#endif
+#include "aquarium.h"
 
 // Hardware pin map (ESP32 Dev Board)
 #ifndef RELAY_PIN
@@ -26,69 +17,38 @@
 #define TEMP_SENSOR_PIN 26
 #endif
 
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
+// The board's BOOT button. Holding it for WIFI_RESET_HOLD_MS while running clears
+// the saved Wi-Fi network and restarts into the setup portal.
+#ifndef WIFI_RESET_PIN
+#define WIFI_RESET_PIN 0
+#endif
+
+const char* HOSTNAME = "aquarium-lights";
+// Open network the board broadcasts while it has no working Wi-Fi to join.
+const char* SETUP_NETWORK = "Aquarium-Setup";
+const unsigned long SETUP_PORTAL_TIMEOUT_S = 300;
+const unsigned long WIFI_RESET_HOLD_MS = 5000;
 
 WebServer server(80);
 bool lightOn = false;
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature tempSensors(&oneWire);
-float lastTempC = NAN;
-bool tempProbePresent = false;
+aquarium::Temperature temperature;
 unsigned long lastTempReadMs = 0;
 const unsigned long TEMP_REFRESH_MS = 5000;
+unsigned long resetPressedSinceMs = 0;
 
-String buildStatusJson() {
-  String payload = "{";
-  payload += "\"light\":\"";
-  payload += (lightOn ? "ON" : "OFF");
-  payload += "\",\"lightOn\":";
-  payload += (lightOn ? "true" : "false");
-  payload += ",\"tempProbePresent\":";
-  payload += (tempProbePresent ? "true" : "false");
-  payload += ",\"temperatureC\":";
-  payload += (tempProbePresent ? String(lastTempC, 2) : "null");
-  payload += ",\"temperatureF\":";
-  payload += (tempProbePresent ? String((lastTempC * 9.0f / 5.0f) + 32.0f, 2) : "null");
-  payload += ",\"relayPin\":";
-  payload += String(RELAY_PIN);
-  payload += ",\"tempSensorPin\":";
-  payload += String(TEMP_SENSOR_PIN);
-  payload += ",\"uptimeMs\":";
-  payload += String(millis());
-  payload += ",\"temperatureUpdatedMs\":";
-  payload += String(lastTempReadMs);
-  payload += ",\"wifiRssiDbm\":";
-  payload += String(WiFi.RSSI());
-  payload += ",\"ip\":\"";
-  payload += WiFi.localIP().toString();
-  payload += "\"}";
-  return payload;
-}
-
-String buildHomebridgePayloadJson() {
-  String payload = "{";
-  payload += "\"accessory\":\"AquariumController\",";
-  payload += "\"services\":{";
-  payload += "\"lightbulb\":{\"on\":";
-  payload += (lightOn ? "true" : "false");
-  payload += "},";
-  payload += "\"temperatureSensor\":{\"statusActive\":";
-  payload += (tempProbePresent ? "true" : "false");
-  payload += ",\"currentTemperatureC\":";
-  payload += (tempProbePresent ? String(lastTempC, 2) : "null");
-  payload += "}";
-  payload += "},";
-  payload += "\"meta\":{";
-  payload += "\"uptimeMs\":";
-  payload += String(millis());
-  payload += ",\"temperatureUpdatedMs\":";
-  payload += String(lastTempReadMs);
-  payload += ",\"wifiRssiDbm\":";
-  payload += String(WiFi.RSSI());
-  payload += "}";
-  payload += "}";
-  return payload;
+aquarium::Snapshot snapshot() {
+  aquarium::Snapshot s;
+  s.lightOn = lightOn;
+  s.temperature = temperature;
+  s.relayPin = RELAY_PIN;
+  s.tempSensorPin = TEMP_SENSOR_PIN;
+  s.uptimeMs = millis();
+  s.temperatureUpdatedMs = lastTempReadMs;
+  s.wifiRssiDbm = WiFi.RSSI();
+  s.ip = WiFi.localIP().toString().c_str();
+  return s;
 }
 
 void refreshTemperature(bool forceRead = false) {
@@ -98,14 +58,50 @@ void refreshTemperature(bool forceRead = false) {
   }
 
   tempSensors.requestTemperatures();
-  float tempC = tempSensors.getTempCByIndex(0);
-  if (tempC == DEVICE_DISCONNECTED_C || tempC < -55.0f || tempC > 125.0f) {
-    tempProbePresent = false;
-  } else {
-    tempProbePresent = true;
-    lastTempC = tempC;
-  }
+  temperature = aquarium::applyReading(temperature, tempSensors.getTempCByIndex(0));
   lastTempReadMs = now;
+}
+
+// Joins the saved Wi-Fi network. With none saved, or if it cannot be reached,
+// broadcasts SETUP_NETWORK with a page for choosing a network and entering its
+// password; the choice is stored on the board. Restarts to try again if nobody
+// finishes setup in time, e.g. while the router is down.
+void connectWiFi() {
+  WiFi.setHostname(HOSTNAME);
+  WiFiManager wifiManager;
+  wifiManager.setConfigPortalTimeout(SETUP_PORTAL_TIMEOUT_S);
+  wifiManager.setConnectTimeout(20);
+  Serial.println("Connecting to WiFi...");
+  if (!wifiManager.autoConnect(SETUP_NETWORK)) {
+    Serial.println("WiFi setup timed out, restarting.");
+    ESP.restart();
+  }
+  Serial.print("Connected: ");
+  Serial.println(WiFi.localIP());
+}
+
+void checkWiFiResetButton() {
+  if (digitalRead(WIFI_RESET_PIN) != LOW) {
+    resetPressedSinceMs = 0;
+    return;
+  }
+  if (resetPressedSinceMs == 0) {
+    resetPressedSinceMs = millis();
+  } else if (millis() - resetPressedSinceMs >= WIFI_RESET_HOLD_MS) {
+    Serial.println("Clearing saved WiFi and restarting into setup.");
+    WiFiManager().resetSettings();
+    ESP.restart();
+  }
+}
+
+void sendTemperature(bool fahrenheit) {
+  refreshTemperature(true);
+  if (!temperature.present) {
+    server.send(503, "text/plain", "Temperature probe unavailable");
+    return;
+  }
+  float value = fahrenheit ? aquarium::toFahrenheit(temperature.celsius) : temperature.celsius;
+  server.send(200, "text/plain", aquarium::formatTwoDecimals(value).c_str());
 }
 
 void setup() {
@@ -113,22 +109,16 @@ void setup() {
 
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH); // relay OFF initially
+  pinMode(WIFI_RESET_PIN, INPUT_PULLUP);
 
   tempSensors.begin();
   tempSensors.setWaitForConversion(true);
   refreshTemperature(true);
 
   Serial.println("Relay initialized.");
-  Serial.print("Connecting to WiFi...");
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println(" connected!");
-  Serial.println(WiFi.localIP());
+  connectWiFi();
 
-  if (!MDNS.begin("aquarium-lights")) {
+  if (!MDNS.begin(HOSTNAME)) {
     Serial.println("Error setting up mDNS responder!");
   } else {
     Serial.println("mDNS responder started at http://aquarium-lights.local");
@@ -150,39 +140,24 @@ void setup() {
     server.send(200, "text/plain", lightOn ? "ON" : "OFF");
   });
 
-  server.on("/temperature/c", []() {
-    refreshTemperature(true);
-    if (!tempProbePresent) {
-      server.send(503, "text/plain", "Temperature probe unavailable");
-      return;
-    }
-    server.send(200, "text/plain", String(lastTempC, 2));
-  });
-
-  server.on("/temperature/f", []() {
-    refreshTemperature(true);
-    if (!tempProbePresent) {
-      server.send(503, "text/plain", "Temperature probe unavailable");
-      return;
-    }
-    float tempF = (lastTempC * 9.0f / 5.0f) + 32.0f;
-    server.send(200, "text/plain", String(tempF, 2));
-  });
+  server.on("/temperature/c", []() { sendTemperature(false); });
+  server.on("/temperature/f", []() { sendTemperature(true); });
 
   server.on("/status/json", []() {
     refreshTemperature(true);
-    server.send(200, "application/json", buildStatusJson());
+    server.send(200, "application/json", aquarium::statusJson(snapshot()).c_str());
   });
 
   server.on("/homebridge/payload", []() {
     refreshTemperature(true);
-    server.send(200, "application/json", buildHomebridgePayloadJson());
+    server.send(200, "application/json", aquarium::homebridgeJson(snapshot()).c_str());
   });
 
   server.begin();
 }
 
 void loop() {
+  checkWiFiResetButton();
   refreshTemperature(false);
   server.handleClient();
 }

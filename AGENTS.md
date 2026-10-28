@@ -46,7 +46,8 @@ Enclosure opening standard:
 
 ## Firmware overview
 
-- `src/main.cpp` connects to Wi-Fi, advertises mDNS, and exposes HTTP endpoints to toggle and query the relay.
+- `src/main.cpp` joins Wi-Fi (or opens the `Aquarium-Setup` portal), advertises mDNS, and exposes HTTP endpoints to toggle and query the relay. Holding BOOT (GPIO0) for 5 seconds clears the saved network.
+- `lib/aquarium/` holds the board-independent logic (temperature validation, JSON payloads); `test/` covers it with Unity tests run by `pio test -e native`.
 - Endpoints:
   - `GET /light/on`
   - `GET /light/off`
@@ -58,14 +59,13 @@ Enclosure opening standard:
 
 ## Configuration and secrets
 
-- Wi-Fi credentials are injected at build time from `.env` via `env-extra.py`.
-- `.env` is ignored by git; `.env.example` is the template.
-- Do **not** add secrets to source files.
+- Wi-Fi is set up on the device through a captive portal (WiFiManager) and stored in the ESP32's flash; nothing network-specific is built into the firmware. See "Wi-Fi setup" in `README.md`.
+- This repository is public: never commit network names, passwords, IP addresses, hostnames or other details of a particular home network.
 
 ## How to contribute effectively
 
 - Keep changes small and reviewable; explain intent in commits/PRs.
-- Prefer `.env` for configuration; never commit real credentials.
+- Keep logic that does not touch hardware in `lib/aquarium/` and add tests for it; run `pio test -e native` and `pio run` before committing.
 - If adding hardware features, update both code and docs (`README.md` + `docs/circuit-diagram.md`).
 - For safety, do not change AC wiring assumptions without explicit review.
 - Validate on hardware where possible; otherwise note what is untested.
@@ -74,7 +74,7 @@ Enclosure opening standard:
 ## Code pointers
 
 - Firmware: `src/main.cpp`
+- Logic and tests: `lib/aquarium/`, `test/`
 - Build config: `platformio.ini`
-- Env injection: `env-extra.py`
 - Circuit source-of-truth: `docs/circuit-diagram.md`
 - Wiring diagram (high-level): `README.md`
