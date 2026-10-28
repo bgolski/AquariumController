@@ -10,6 +10,7 @@
 #include "aquarium.h"
 #include "relay.h"
 #include "probe_schedule.h"
+#include "reconnect.h"
 
 // Hardware pin map (ESP32 Dev Board)
 #ifndef RELAY_PIN
@@ -45,6 +46,7 @@ unsigned long resetPressedSinceMs = 0;
 aquarium::ProbeSchedule probe(TEMP_REFRESH_MS, 750);
 bool haveValidReading = false;
 unsigned long lastValidReadingMs = 0;
+aquarium::ReconnectTimer wifiTimer;
 
 aquarium::Snapshot snapshot() {
   aquarium::Snapshot s;
@@ -91,6 +93,7 @@ void connectWiFi() {
     Serial.println("WiFi setup timed out, restarting.");
     ESP.restart();
   }
+  WiFi.setSleep(false);
   Serial.print("Connected: ");
   Serial.println(WiFi.localIP());
 }
@@ -173,7 +176,22 @@ void setup() {
   server.begin();
 }
 
+// Reconnects to the saved network after a drop, backing off up to a
+// minute between tries, and restarts mDNS once the connection is back.
+void maintainWiFi() {
+  if (wifiTimer.due(WiFi.status() == WL_CONNECTED, millis())) {
+    Serial.println("WiFi lost, reconnecting...");
+    WiFi.reconnect();
+  }
+  if (wifiTimer.reconnected()) {
+    Serial.println("WiFi back, restarting mDNS.");
+    MDNS.end();
+    MDNS.begin(HOSTNAME);
+  }
+}
+
 void loop() {
+  maintainWiFi();
   checkWiFiResetButton();
   pollTemperature();
   server.handleClient();
