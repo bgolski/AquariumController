@@ -33,7 +33,7 @@ std::string TempHistory::json() const {
   for (float v : samples_) {
     if (!first) out.push_back(',');
     first = false;
-    char buf[16];
+    char buf[48];
     std::snprintf(buf, sizeof buf, "%.1f", static_cast<double>(v));
     out.append(buf);
   }
@@ -41,5 +41,5 @@ std::string TempHistory::json() const {
   return out;
 }
 
-} // namespace aquarium
+}  // namespace aquarium
 

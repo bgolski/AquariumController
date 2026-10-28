@@ -45,6 +45,7 @@ void test_limit() {
   TEST_ASSERT_EQUAL_STRING("n4", out[4].ssid.c_str());
   TEST_ASSERT_EQUAL_UINT32(20, networksToOffer(scan).size());
   TEST_ASSERT_EQUAL_UINT32(0, networksToOffer({}).size());
+  TEST_ASSERT_EQUAL_UINT32(0, networksToOffer(scan, 0).size());
 }
 
 void test_json_string() {

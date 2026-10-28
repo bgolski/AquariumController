@@ -1,6 +1,5 @@
 #include "network_list.h"
 #include <algorithm>
-#include <cctype>
 #include <cstdio>
 #include <unordered_set>
 
@@ -30,10 +29,10 @@ std::vector<Network> networksToOffer(const std::vector<Network>& scan, std::size
   result.reserve(limit);
   std::unordered_set<std::string> seen;
   for (const auto& n : filtered) {
+    if (result.size() >= limit) break;
     if (seen.find(n.ssid) != seen.end()) continue;
     seen.insert(n.ssid);
     result.push_back(n);
-    if (result.size() == limit) break;
   }
   return result;
 }
@@ -81,4 +80,4 @@ std::string networksJson(const std::vector<Network>& networks) {
   return out;
 }
 
-} // namespace aquarium
+}  // namespace aquarium

@@ -26,5 +26,5 @@ bool SetupFallback::update(bool hasSavedNetwork, bool connected, unsigned long n
   return (nowMs - startMs_) >= waitMs_;
 }
 
-} // namespace aquarium
+}  // namespace aquarium
 
