@@ -101,6 +101,22 @@ The firmware uses the `min_spiffs.csv` partition layout (1.9 MB per app slot). S
 
 Serial settings are in `platformio.ini`.
 
+## Updating over Wi-Fi
+
+After one upload over USB, new firmware can be sent over Wi-Fi.
+
+- **Password:** the board makes its own update password the first time it connects and prints it on the serial port at every start (`pio device monitor`). User name `admin`. Erasing the board's settings makes a new one.
+- **Update:** build, then send the firmware with digest authentication:
+
+  ```
+  pio run
+  curl --digest -u admin:<password> -F firmware=@.pio/build/esp32dev/firmware.bin http://aquarium-lights.local/update
+  ```
+
+  The board answers `Update installed, restarting` and is back within a few seconds. A wrong password gets `401` and changes nothing.
+- **Rollback:** new firmware is kept only once it reconnects to Wi-Fi. If it crashes or restarts before that, the board goes back to the previous firmware on its own.
+- **Recovery:** if the board cannot reach any network, upload over USB as above.
+
 ## Contributing
 
 See `AGENTS.md` for contribution guidance and project conventions.
