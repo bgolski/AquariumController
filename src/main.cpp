@@ -6,11 +6,14 @@
 #include <DallasTemperature.h>
 #include <WiFiManager.h>
 #include <Preferences.h>
+#include <Update.h>
+#include <esp_ota_ops.h>
 
 #include "aquarium.h"
 #include "relay.h"
 #include "probe_schedule.h"
 #include "reconnect.h"
+#include "update_password.h"
 
 // Hardware pin map (ESP32 Dev Board)
 #ifndef RELAY_PIN
@@ -33,6 +36,9 @@ const char* SETUP_NETWORK = "Aquarium-Setup";
 const unsigned long SETUP_PORTAL_TIMEOUT_S = 300;
 const unsigned long WIFI_RESET_HOLD_MS = 5000;
 
+// User name for firmware updates; the password is generated on the board.
+const char* UPDATE_USER = "admin";
+
 WebServer server(80);
 bool lightOn = false;
 Preferences preferences;
@@ -47,6 +53,7 @@ aquarium::ProbeSchedule probe(TEMP_REFRESH_MS, 750);
 bool haveValidReading = false;
 unsigned long lastValidReadingMs = 0;
 aquarium::ReconnectTimer wifiTimer;
+std::string updatePassword;
 
 aquarium::Snapshot snapshot() {
   aquarium::Snapshot s;
@@ -79,6 +86,13 @@ void pollTemperature() {
   }
 }
 
+// New firmware sent over Wi-Fi only stays installed once it has
+// connected to Wi-Fi (see connectWiFi()); until then a restart rolls
+// back to the previous version.
+extern "C" bool verifyRollbackLater() {
+  return true;
+}
+
 // Joins the saved Wi-Fi network. With none saved, or if it cannot be reached,
 // broadcasts SETUP_NETWORK with a page for choosing a network and entering its
 // password; the choice is stored on the board. Restarts to try again if nobody
@@ -94,6 +108,8 @@ void connectWiFi() {
     ESP.restart();
   }
   WiFi.setSleep(false);
+  // Connected, so this firmware works: keep it.
+  esp_ota_mark_app_valid_cancel_rollback();
   Serial.print("Connected: ");
   Serial.println(WiFi.localIP());
 }
@@ -142,6 +158,14 @@ void setup() {
   Serial.println("Relay initialized.");
   connectWiFi();
 
+  updatePassword = preferences.getString("otaPass", "").c_str();
+  if (!aquarium::validPassword(updatePassword)) {
+    updatePassword = aquarium::makePassword(esp_random);
+    preferences.putString("otaPass", updatePassword.c_str());
+  }
+  Serial.print("Update password: ");
+  Serial.println(updatePassword.c_str());
+
   if (!MDNS.begin(HOSTNAME)) {
     Serial.println("Error setting up mDNS responder!");
   } else {
@@ -172,6 +196,41 @@ void setup() {
   server.on("/homebridge/payload", []() {
     server.send(200, "application/json", aquarium::homebridgeJson(snapshot()).c_str());
   });
+
+  // Firmware update: POST the .bin as a multipart file field, with
+  // digest authentication. Restarts into the new firmware on success.
+  server.on(
+      "/update", HTTP_POST,
+      []() {
+        if (!server.authenticate(UPDATE_USER, updatePassword.c_str())) {
+          server.requestAuthentication(DIGEST_AUTH, HOSTNAME);
+          return;
+        }
+        bool ok = Update.isFinished() && !Update.hasError();
+        server.sendHeader("Connection", "close");
+        server.send(ok ? 200 : 500, "text/plain",
+                    ok ? "Update installed, restarting" : Update.errorString());
+        if (ok) {
+          delay(500);
+          ESP.restart();
+        }
+      },
+      []() {
+        if (!server.authenticate(UPDATE_USER, updatePassword.c_str())) {
+          return;
+        }
+        HTTPUpload& upload = server.upload();
+        if (upload.status == UPLOAD_FILE_START) {
+          Serial.println("Firmware update started.");
+          Update.begin(UPDATE_SIZE_UNKNOWN);
+        } else if (upload.status == UPLOAD_FILE_WRITE) {
+          Update.write(upload.buf, upload.currentSize);
+        } else if (upload.status == UPLOAD_FILE_END) {
+          Update.end(true);
+        } else if (upload.status == UPLOAD_FILE_ABORTED) {
+          Update.abort();
+        }
+      });
 
   server.begin();
 }
