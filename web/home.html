@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Aquarium</title>
+<style>
+:root{
+  --bg:#eef3f5; --card:#ffffff; --ink:#0f2a33; --muted:#5d7680; --line:#dbe5e9;
+  --accent:#0e7c86; --accent-ink:#ffffff; --accent-soft:#e3f2f3;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#0b1418; --card:#12222a; --ink:#e3eef1; --muted:#8aa3ac; --line:#20363f;
+  --accent:#37b3bd; --accent-ink:#06282c; --accent-soft:#163940;
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.top{position:relative;padding:22px 20px 28px;color:#fff;background:linear-gradient(160deg,#0b5f69,#0e7c86 60%,#1497a0)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.2px;max-width:480px;margin:0 auto}
+.bubbles{position:absolute;right:max(20px,calc(50% - 220px));top:14px;opacity:.35}
+.wave{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:14px;display:block}
+.wave path{fill:var(--bg)}
+main{max-width:480px;margin:0 auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:12px}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:112px}
+.ready .tile{transition:background .2s,border-color .2s,color .2s}
+.tile .k{font-size:12px;color:var(--muted)}
+.big{font-size:28px;font-weight:600;letter-spacing:-.5px}
+.big small{font-size:15px;font-weight:500;color:var(--muted)}
+.switch{width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;margin-top:auto}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.ready .switch{transition:background .2s}
+.ready .switch::after{transition:left .2s}
+.tile.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tile.on .k{color:inherit;opacity:.8}
+.tile.on .switch{background:rgba(255,255,255,.35)}
+.tile.on .switch::after{left:21px}
+.spark{display:block;width:100%;height:22px;margin-top:auto;overflow:visible}
+.spark path{fill:none;stroke:var(--accent);stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:12px 14px;border-top:1px solid var(--line);font-size:14px}
+.row:first-child{border-top:0}
+.row>span:first-child{color:var(--muted);flex:none}
+.row>span:last-child{min-width:0;display:flex;align-items:center;justify-content:flex-end}
+.v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.row>span.link{color:var(--accent);font-weight:500}
+.chev{color:var(--muted)}
+.bars{display:inline-flex;align-items:flex-end;gap:2px;height:12px;margin-left:6px;flex:none}
+.bars i{width:3px;background:var(--ink);border-radius:1px;opacity:.2}
+.bars i.on{opacity:.75}
+.bars i:nth-child(1){height:4px}.bars i:nth-child(2){height:7px}.bars i:nth-child(3){height:10px}.bars i:nth-child(4){height:12px}
+.banner{background:var(--accent-soft);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.banner b{font-weight:600}
+.banner .r{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
+.banner button{color:var(--accent);font-weight:500;padding:4px 0}
+</style>
+</head>
+<body>
+<header class="top">
+  <svg class="bubbles" width="30" height="34" viewBox="0 0 30 34" fill="none" stroke="#fff" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="26" r="5"/><circle cx="20" cy="12" r="3.5"/><circle cx="12" cy="5" r="2"/></svg>
+  <div class="brand">
+    <svg width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M2 8c3-5 9-6 14-4 2 .8 3.5 2.2 4.5 4-1 1.8-2.5 3.2-4.5 4-5 2-11 1-14-4z"/><path d="M20.5 8 25 4v8z"/><circle cx="7" cy="7" r=".9" fill="#fff"/></svg>
+    Aquarium
+  </div>
+  <svg class="wave" viewBox="0 0 280 14" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8 C 35 0, 70 0, 105 7 S 175 14, 210 7 S 260 2, 280 6 V14 H0z"/></svg>
+</header>
+<main>
+  <div class="banner" id="banner" hidden>
+    <b>Setup network on</b>
+    <span class="mono">Aquarium-Setup</span>
+    <div class="r"><span id="left"></span><button id="off">Turn off</button></div>
+  </div>
+  <div class="tiles">
+    <button class="tile" id="light" aria-pressed="false"><span class="k">Light</span><span class="big" id="lv">–</span><span class="switch"></span></button>
+    <div class="tile"><span class="k">Water</span><span class="big" id="tv">–</span>
+      <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path id="spark"/></svg></div>
+  </div>
+  <div class="card">
+    <div class="row"><span>Wi-Fi</span><span><span class="v" id="ssid"></span><span class="bars" id="bars"><i></i><i></i><i></i><i></i></span></span></div>
+    <div class="row"><span>IP</span><span class="mono v" id="ip"></span></div>
+    <div class="row"><span>Firmware</span><span class="mono v" id="fw"></span></div>
+    <button class="row" id="change"><span class="link">Change Wi-Fi</span><span class="chev">›</span></button>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let s = null;          // last /home/status answer
+let setupLeft = -1;    // seconds until the setup network closes, -1 when off
+
+async function refresh() {
+  try {
+    const r = await fetch('/home/status', {cache: 'no-store'});
+    s = await r.json();
+    setupLeft = s.setup;
+    render();
+  } catch (e) {
+    // Board briefly unreachable; the next poll tries again.
+  }
+}
+
+function showLight(on) {
+  $('light').classList.toggle('on', on);
+  $('light').setAttribute('aria-pressed', on);
+  $('lv').textContent = on ? 'On' : 'Off';
+}
+
+// The last hour as a line scaled to fill the tile.
+function sparkPath(values) {
+  if (values.length < 2) return '';
+  let lo = Math.min(...values), hi = Math.max(...values);
+  if (hi - lo < 1) { const mid = (hi + lo) / 2; lo = mid - 0.5; hi = mid + 0.5; }
+  return values.map((v, i) => (i ? 'L' : 'M') + (i * 100 / (values.length - 1)).toFixed(1) + ' ' +
+    (20 - (v - lo) / (hi - lo) * 18).toFixed(1)).join(' ');
+}
+
+function showSetup() {
+  $('banner').hidden = setupLeft < 0;
+  if (setupLeft >= 0) {
+    const m = Math.floor(setupLeft / 60), sec = setupLeft % 60;
+    $('left').textContent = 'Closes in ' + m + ':' + String(sec).padStart(2, '0');
+  }
+}
+
+function render() {
+  showLight(s.light);
+  $('tv').innerHTML = s.tempF === null ? '–' : s.tempF.toFixed(1) + '<small> °F</small>';
+  $('spark').setAttribute('d', sparkPath(s.history));
+  $('ssid').textContent = s.ssid;
+  $('bars').querySelectorAll('i').forEach((b, i) => b.classList.toggle('on', i < s.bars));
+  $('ip').textContent = s.ip;
+  $('fw').textContent = s.firmware;
+  showSetup();
+  // Animate only changes after the first answer, not the page appearing.
+  setTimeout(() => document.body.classList.add('ready'), 100);
+}
+
+$('light').onclick = async () => {
+  if (!s) return;
+  s.light = !s.light;
+  showLight(s.light);
+  try { await fetch('/light/' + (s.light ? 'on' : 'off'), {cache: 'no-store'}); } catch (e) {}
+  refresh();
+};
+
+async function post(path) {
+  try { await fetch(path, {method: 'POST'}); } catch (e) {}
+  refresh();
+}
+
+$('change').onclick = () => post('/setup/open');
+$('off').onclick = () => post('/setup/close');
+
+setInterval(() => {
+  if (setupLeft > 0) { setupLeft--; showSetup(); }
+}, 1000);
+setInterval(refresh, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+refresh();
+</script>
+</body>
+</html>

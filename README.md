@@ -64,7 +64,9 @@ The hardware wiring source of truth is the detailed circuit document:
 
 ## Firmware behavior
 
-The ESP32 connects to Wi-Fi, advertises mDNS, and exposes a small HTTP API:
+The ESP32 connects to Wi-Fi, advertises mDNS, and serves a home page at `http://aquarium-lights.local`: the light switch, the water temperature with the last hour as a trend line, the Wi-Fi network and signal, the IP, the firmware build date, and **Change Wi-Fi**, which opens the setup network (see below) with a countdown and a **Turn off**.
+
+It also exposes a small HTTP API:
 
 - `GET /light/on` -> turn relay ON
 - `GET /light/off` -> turn relay OFF
@@ -73,6 +75,8 @@ The ESP32 connects to Wi-Fi, advertises mDNS, and exposes a small HTTP API:
 - `GET /temperature/f` -> read DS18B20 temperature in Fahrenheit
 - `GET /status/json` -> combined light + temperature JSON status
 - `GET /homebridge/payload` -> Homebridge-oriented payload
+- `GET /home/status` -> what the home page shows
+- `POST /setup/open`, `POST /setup/close` -> open or close the setup network
 
 ## Wi-Fi setup
 
@@ -84,7 +88,7 @@ Wi-Fi details are not built into the firmware. They are entered from a phone and
 
 If a network is saved but the board cannot reach it, it keeps trying and opens `Aquarium-Setup` only after 10 minutes without connecting since it started, closing it again as soon as the saved network is back. A drop after the board has connected never opens it; the board just reconnects.
 
-To switch to a different network later without touching the board, open the setup network from the current one, then set it up from a phone as above. The board stays on its current network until the new one works, and the setup network closes after 10 minutes if nothing is set up:
+To switch to a different network later without touching the board, tap **Change Wi-Fi** on the home page (or `POST /setup/open`), then set it up from a phone as above. The board stays on its current network until the new one works, and the setup network closes after 10 minutes if nothing is set up:
 
 ```
 curl -X POST http://aquarium-lights.local/setup/open
@@ -92,7 +96,7 @@ curl -X POST http://aquarium-lights.local/setup/open
 
 As a last resort, hold the board's **BOOT** button for 5 seconds while it is running. It forgets the saved network and restarts into setup.
 
-The setup page is `web/setup.html`; the build gzips it into the firmware.
+The pages are `web/setup.html` and `web/home.html`; the build gzips them into the firmware.
 
 Once connected, the board answers at `http://aquarium-lights.local`.
 

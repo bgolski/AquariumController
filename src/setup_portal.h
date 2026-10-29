@@ -15,12 +15,20 @@
 
 #include <WebServer.h>
 
-// Call once from setup(), before server.begin(). Registers the setup page
-// routes on `server` and starts joining the saved network.
+// Call once from setup(), before server.begin(). Registers the setup
+// routes on `server` (all but "/") and starts joining the saved network.
 void wifiSetupBegin(WebServer& server, const char* hostname, const char* setupNetwork);
 
 // Call on every loop iteration.
 void wifiSetupLoop();
+
+// For "/": sends the setup page and returns true when the request came in on
+// the setup network; returns false otherwise.
+bool wifiSetupHandleRoot();
+
+// Seconds until a setup network opened on request closes, or -1 when it is
+// not open on request.
+long wifiSetupSecondsLeft();
 
 // Forgets the saved network. The caller restarts the board afterwards.
 void wifiForgetNetwork();

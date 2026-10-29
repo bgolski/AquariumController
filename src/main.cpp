@@ -11,6 +11,9 @@
 #include "relay.h"
 #include "probe_schedule.h"
 #include "update_password.h"
+#include "network_list.h"
+#include "temp_history.h"
+#include "home_page.h"  // generated from web/home.html by web/build_page.py
 #include "setup_portal.h"
 
 // Hardware pin map (ESP32 Dev Board)
@@ -50,6 +53,7 @@ aquarium::ProbeSchedule probe(TEMP_REFRESH_MS, 750);
 bool haveValidReading = false;
 unsigned long lastValidReadingMs = 0;
 std::string updatePassword;
+aquarium::TempHistory history;
 
 aquarium::Snapshot snapshot() {
   aquarium::Snapshot s;
@@ -75,6 +79,7 @@ void pollTemperature() {
       if (temperature.present) {
         haveValidReading = true;
         lastValidReadingMs = lastTempReadMs;
+        history.add(aquarium::toFahrenheit(temperature.celsius), lastTempReadMs);
       }
       break;
     default:
@@ -119,6 +124,21 @@ void setLight(bool on) {
   preferences.putInt("light", on ? 1 : 0);
 }
 
+// GET /home/status: everything the home page shows.
+void sendHomeStatus() {
+  bool fresh = aquarium::readingFresh(haveValidReading, lastValidReadingMs, millis(), TEMP_MAX_AGE_MS);
+  std::string json = std::string("{\"light\":") + (lightOn ? "true" : "false");
+  json += ",\"tempF\":" + (fresh ? aquarium::formatTwoDecimals(aquarium::toFahrenheit(temperature.celsius)) : std::string("null"));
+  json += ",\"history\":" + history.json();
+  json += ",\"ssid\":" + aquarium::jsonString(WiFi.SSID().c_str());
+  json += ",\"bars\":" + std::to_string(aquarium::signalBars(WiFi.RSSI()));
+  json += ",\"ip\":" + aquarium::jsonString(WiFi.localIP().toString().c_str());
+  json += ",\"firmware\":" + aquarium::jsonString(FIRMWARE_DATE);
+  json += ",\"setup\":" + std::to_string(wifiSetupSecondsLeft()) + "}";
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", json.c_str());
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -147,6 +167,16 @@ void setup() {
   } else {
     Serial.println("mDNS responder started at http://aquarium-lights.local");
   }
+
+  // The setup page on the setup network, the home page everywhere else.
+  server.on("/", []() {
+    if (wifiSetupHandleRoot()) return;
+    server.sendHeader("Content-Encoding", "gzip");
+    server.sendHeader("Cache-Control", "no-store");
+    server.send_P(200, "text/html", reinterpret_cast<const char*>(HOME_PAGE_GZ), HOME_PAGE_GZ_LEN);
+  });
+
+  server.on("/home/status", HTTP_GET, sendHomeStatus);
 
   server.on("/light/on", []() {
     setLight(true);

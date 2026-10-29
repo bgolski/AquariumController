@@ -149,14 +149,12 @@ void sendJson(int code, const std::string& json) {
   web->send(code, "application/json", json.c_str());
 }
 
-void handleRoot() {
-  if (!onSetupNetwork()) {
-    web->send(404, "text/plain", "Not found");
-    return;
-  }
+bool sendSetupPage() {
+  if (!onSetupNetwork()) return false;
   web->sendHeader("Content-Encoding", "gzip");
   web->sendHeader("Cache-Control", "no-store");
   web->send_P(200, "text/html", reinterpret_cast<const char*>(SETUP_PAGE_GZ), SETUP_PAGE_GZ_LEN);
+  return true;
 }
 
 // Answers 202 while a scan is running; the page asks again.
@@ -225,6 +223,13 @@ void handleOpen() {
   requested = true;
   requestedAtMs = millis();
   web->send(202, "text/plain", "Setup network opening");
+}
+
+// Closes a setup network opened on request, unless a test is running or the
+// board still has no network to join.
+void handleClose() {
+  requested = false;
+  web->send(200, "text/plain", "Setup network closing");
 }
 
 void handleDone() {
@@ -302,12 +307,12 @@ void wifiSetupBegin(WebServer& server, const char* hostname, const char* setupNe
   joinSaved();
   Serial.println(savedSsid.isEmpty() ? "No saved WiFi network." : "Connecting to WiFi...");
 
-  server.on("/", handleRoot);
   server.on("/setup/networks", HTTP_GET, handleNetworks);
   server.on("/setup/connect", HTTP_POST, handleConnect);
   server.on("/setup/status", HTTP_GET, handleStatus);
   server.on("/setup/done", HTTP_POST, handleDone);
   server.on("/setup/open", HTTP_POST, handleOpen);
+  server.on("/setup/close", HTTP_POST, handleClose);
   server.onNotFound(handleNotFound);
 }
 
@@ -347,6 +352,14 @@ void wifiSetupLoop() {
                 test == Test::Connecting || holding || requested;
   if (wanted && !portalOpen) openPortal();
   if (!wanted && portalOpen) closePortal();
+}
+
+bool wifiSetupHandleRoot() { return sendSetupPage(); }
+
+long wifiSetupSecondsLeft() {
+  if (!requested || !portalOpen) return -1;
+  unsigned long elapsed = millis() - requestedAtMs;
+  return elapsed >= REQUEST_OPEN_MS ? 0 : (long)((REQUEST_OPEN_MS - elapsed + 999) / 1000);
 }
 
 void wifiForgetNetwork() {
