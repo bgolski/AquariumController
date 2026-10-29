@@ -33,8 +33,6 @@ enum class Test { Idle, Connecting, Connected, WrongPassword, NotFound, Failed }
 WebServer* web = nullptr;
 const char* host = nullptr;
 const char* setupName = nullptr;
-const char* updateUser = nullptr;
-const std::string* updatePass = nullptr;
 
 Preferences store;
 String savedSsid;
@@ -215,18 +213,15 @@ void handleStatus() {
                      aquarium::jsonString(testSsid.c_str());
   if (test == Test::Connected) {
     json += std::string(",\"host\":") + aquarium::jsonString(std::string(host) + ".local") +
-            ",\"ip\":" + aquarium::jsonString(WiFi.localIP().toString().c_str()) +
-            ",\"updatePassword\":" + aquarium::jsonString(*updatePass);
+            ",\"ip\":" + aquarium::jsonString(WiFi.localIP().toString().c_str());
   }
   sendJson(200, json + "}");
 }
 
 // Opens the setup network from the home network, e.g. to move the board to
-// another network without reaching its BOOT button.
+// another network without reaching its BOOT button. Needs no password, like
+// the light: nothing changes until a new network has been tested and works.
 void handleOpen() {
-  if (!web->authenticate(updateUser, updatePass->c_str())) {
-    return web->requestAuthentication(DIGEST_AUTH, host);
-  }
   requested = true;
   requestedAtMs = millis();
   web->send(202, "text/plain", "Setup network opening");
@@ -292,13 +287,10 @@ void checkTest(bool connected, unsigned long now) {
 
 }  // namespace
 
-void wifiSetupBegin(WebServer& server, const char* hostname, const char* setupNetwork,
-                    const char* updateUserName, const std::string& updatePassword) {
+void wifiSetupBegin(WebServer& server, const char* hostname, const char* setupNetwork) {
   web = &server;
   host = hostname;
   setupName = setupNetwork;
-  updateUser = updateUserName;
-  updatePass = &updatePassword;
 
   WiFi.onEvent(onWiFiEvent);
   WiFi.setHostname(hostname);

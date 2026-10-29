@@ -80,14 +80,14 @@ Wi-Fi details are not built into the firmware. They are entered from a phone and
 
 1. Power the board. With no saved network it broadcasts an open network called `Aquarium-Setup` right away.
 2. Join `Aquarium-Setup` from a phone or laptop. The setup page opens on its own (if not, browse to `http://192.168.4.1`).
-3. Pick your network (or **Other network…** for a hidden one), enter its password and tap **Connect**. The board tests the password while the setup network stays up: a wrong password or a network it cannot see sends you back with the reason, and success shows the network, the board's address and IP, and the update password. The setup network closes when you tap **Done**, or after 2 minutes.
+3. Pick your network (or **Other network…** for a hidden one), enter its password and tap **Connect**. The board tests the password while the setup network stays up: a wrong password or a network it cannot see sends you back with the reason, and success shows the network and the board's address and IP. The setup network closes when you tap **Done**, or after 2 minutes.
 
 If a network is saved but the board cannot reach it, it keeps trying and opens `Aquarium-Setup` only after 10 minutes without connecting since it started, closing it again as soon as the saved network is back. A drop after the board has connected never opens it; the board just reconnects.
 
-To switch to a different network later without touching the board, open the setup network from the current one with the update password (see below), then set it up from a phone as above. The board stays on its current network until the new one works, and the setup network closes after 10 minutes if nothing is set up:
+To switch to a different network later without touching the board, open the setup network from the current one, then set it up from a phone as above. The board stays on its current network until the new one works, and the setup network closes after 10 minutes if nothing is set up:
 
 ```
-curl --digest -u admin:<password> -X POST http://aquarium-lights.local/setup/open
+curl -X POST http://aquarium-lights.local/setup/open
 ```
 
 As a last resort, hold the board's **BOOT** button for 5 seconds while it is running. It forgets the saved network and restarts into setup.

@@ -60,7 +60,6 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .kv>span:last-child{min-width:0;display:flex;align-items:center;justify-content:flex-end}
 .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
-.copy{color:var(--accent);font-size:12px;margin-left:8px;flex:none}
 </style>
 </head>
 <body>
@@ -104,7 +103,6 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
       <div class="kv"><span>Network</span><span><span class="v" id="onet"></span></span></div>
       <div class="kv"><span>Address</span><span><span class="v mono" id="ohost"></span></span></div>
       <div class="kv"><span>IP</span><span><span class="v mono" id="oip"></span></span></div>
-      <div class="kv"><span>Update password</span><span><span class="v mono" id="opw"></span><button class="copy" id="copy">Copy</button></span></div>
     </div>
     <button class="btn" id="fin">Done</button>
   </section>
@@ -203,30 +201,8 @@ function connected(s) {
   $('onet').textContent = s.ssid;
   $('ohost').textContent = s.host;
   $('oip').textContent = s.ip;
-  $('opw').textContent = s.updatePassword;
   show('ok');
 }
-
-$('copy').onclick = async () => {
-  const text = $('opw').textContent;
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch (e) {
-    // The captive portal browser is not a secure context; fall back to a selection.
-    const t = document.createElement('textarea');
-    t.value = text;
-    t.setAttribute('readonly', '');
-    t.style.position = 'fixed';
-    t.style.opacity = '0';
-    document.body.appendChild(t);
-    t.select();
-    t.setSelectionRange(0, text.length);
-    document.execCommand('copy');
-    t.remove();
-  }
-  $('copy').textContent = 'Copied';
-  setTimeout(() => $('copy').textContent = 'Copy', 1500);
-};
 
 $('fin').onclick = () => {
   call('/setup/done', {});

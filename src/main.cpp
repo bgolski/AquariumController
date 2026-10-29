@@ -140,7 +140,7 @@ void setup() {
   Serial.print("Update password: ");
   Serial.println(updatePassword.c_str());
 
-  wifiSetupBegin(server, HOSTNAME, SETUP_NETWORK, UPDATE_USER, updatePassword);
+  wifiSetupBegin(server, HOSTNAME, SETUP_NETWORK);
 
   if (!MDNS.begin(HOSTNAME)) {
     Serial.println("Error setting up mDNS responder!");
