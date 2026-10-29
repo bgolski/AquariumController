@@ -25,12 +25,15 @@ const unsigned long TEST_TIMEOUT_MS = 25000;
 const unsigned long RESULT_HOLD_MS = 120000;
 // Firmware sent over Wi-Fi that has not connected by then is rolled back.
 const unsigned long ROLLBACK_AFTER_MS = 600000;
+// A setup network opened on request closes after this long unused.
+const unsigned long REQUEST_OPEN_MS = 600000;
 
 enum class Test { Idle, Connecting, Connected, WrongPassword, NotFound, Failed };
 
 WebServer* web = nullptr;
 const char* host = nullptr;
 const char* setupName = nullptr;
+const char* updateUser = nullptr;
 const std::string* updatePass = nullptr;
 
 Preferences store;
@@ -44,6 +47,8 @@ bool portalOpen = false;
 bool wasConnected = false;
 bool holding = false;
 unsigned long holdUntilMs = 0;
+bool requested = false;
+unsigned long requestedAtMs = 0;
 
 Test test = Test::Idle;
 String testSsid;
@@ -216,9 +221,21 @@ void handleStatus() {
   sendJson(200, json + "}");
 }
 
+// Opens the setup network from the home network, e.g. to move the board to
+// another network without reaching its BOOT button.
+void handleOpen() {
+  if (!web->authenticate(updateUser, updatePass->c_str())) {
+    return web->requestAuthentication(DIGEST_AUTH, host);
+  }
+  requested = true;
+  requestedAtMs = millis();
+  web->send(202, "text/plain", "Setup network opening");
+}
+
 void handleDone() {
   if (!onSetupNetwork()) return web->send(404, "text/plain", "Not found");
   sendJson(200, "{}");
+  requested = false;
   if (holding) holdUntilMs = millis() + 1000;  // long enough for the reply to go out
 }
 
@@ -259,6 +276,7 @@ void checkTest(bool connected, unsigned long now) {
     store.putString("ssid", savedSsid);
     store.putString("pass", savedPass);
     test = Test::Connected;
+    requested = false;
     holding = true;
     holdUntilMs = now + RESULT_HOLD_MS;
     Serial.printf("Joined %s; saved.\n", savedSsid.c_str());
@@ -275,10 +293,11 @@ void checkTest(bool connected, unsigned long now) {
 }  // namespace
 
 void wifiSetupBegin(WebServer& server, const char* hostname, const char* setupNetwork,
-                    const std::string& updatePassword) {
+                    const char* updateUserName, const std::string& updatePassword) {
   web = &server;
   host = hostname;
   setupName = setupNetwork;
+  updateUser = updateUserName;
   updatePass = &updatePassword;
 
   WiFi.onEvent(onWiFiEvent);
@@ -296,6 +315,7 @@ void wifiSetupBegin(WebServer& server, const char* hostname, const char* setupNe
   server.on("/setup/connect", HTTP_POST, handleConnect);
   server.on("/setup/status", HTTP_GET, handleStatus);
   server.on("/setup/done", HTTP_POST, handleDone);
+  server.on("/setup/open", HTTP_POST, handleOpen);
   server.onNotFound(handleNotFound);
 }
 
@@ -330,8 +350,9 @@ void wifiSetupLoop() {
   }
 
   if (holding && (long)(holdUntilMs - now) <= 0) holding = false;
+  if (requested && test != Test::Connecting && now - requestedAtMs >= REQUEST_OPEN_MS) requested = false;
   bool wanted = fallback.update(!savedSsid.isEmpty(), connected, now) ||
-                test == Test::Connecting || holding;
+                test == Test::Connecting || holding || requested;
   if (wanted && !portalOpen) openPortal();
   if (!wanted && portalOpen) closePortal();
 }

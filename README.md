@@ -84,7 +84,13 @@ Wi-Fi details are not built into the firmware. They are entered from a phone and
 
 If a network is saved but the board cannot reach it, it keeps trying and opens `Aquarium-Setup` only after 10 minutes without connecting since it started, closing it again as soon as the saved network is back. A drop after the board has connected never opens it; the board just reconnects.
 
-To switch to a different network later, hold the board's **BOOT** button for 5 seconds while it is running. It forgets the saved network and restarts into setup.
+To switch to a different network later without touching the board, open the setup network from the current one with the update password (see below), then set it up from a phone as above. The board stays on its current network until the new one works, and the setup network closes after 10 minutes if nothing is set up:
+
+```
+curl --digest -u admin:<password> -X POST http://aquarium-lights.local/setup/open
+```
+
+As a last resort, hold the board's **BOOT** button for 5 seconds while it is running. It forgets the saved network and restarts into setup.
 
 The setup page is `web/setup.html`; the build gzips it into the firmware.
 
