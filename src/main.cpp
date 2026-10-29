@@ -4,16 +4,14 @@
 #include <ESPmDNS.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <WiFiManager.h>
 #include <Preferences.h>
 #include <Update.h>
-#include <esp_ota_ops.h>
 
 #include "aquarium.h"
 #include "relay.h"
 #include "probe_schedule.h"
-#include "reconnect.h"
 #include "update_password.h"
+#include "setup_portal.h"
 
 // Hardware pin map (ESP32 Dev Board)
 #ifndef RELAY_PIN
@@ -25,7 +23,7 @@
 #endif
 
 // The board's BOOT button. Holding it for WIFI_RESET_HOLD_MS while running clears
-// the saved Wi-Fi network and restarts into the setup portal.
+// the saved Wi-Fi network and restarts into setup.
 #ifndef WIFI_RESET_PIN
 #define WIFI_RESET_PIN 0
 #endif
@@ -33,7 +31,6 @@
 const char* HOSTNAME = "aquarium-lights";
 // Open network the board broadcasts while it has no working Wi-Fi to join.
 const char* SETUP_NETWORK = "Aquarium-Setup";
-const unsigned long SETUP_PORTAL_TIMEOUT_S = 300;
 const unsigned long WIFI_RESET_HOLD_MS = 5000;
 
 // User name for firmware updates; the password is generated on the board.
@@ -52,7 +49,6 @@ unsigned long resetPressedSinceMs = 0;
 aquarium::ProbeSchedule probe(TEMP_REFRESH_MS, 750);
 bool haveValidReading = false;
 unsigned long lastValidReadingMs = 0;
-aquarium::ReconnectTimer wifiTimer;
 std::string updatePassword;
 
 aquarium::Snapshot snapshot() {
@@ -87,31 +83,10 @@ void pollTemperature() {
 }
 
 // New firmware sent over Wi-Fi only stays installed once it has
-// connected to Wi-Fi (see connectWiFi()); until then a restart rolls
+// connected to Wi-Fi (see setup_portal.cpp); until then a restart rolls
 // back to the previous version.
 extern "C" bool verifyRollbackLater() {
   return true;
-}
-
-// Joins the saved Wi-Fi network. With none saved, or if it cannot be reached,
-// broadcasts SETUP_NETWORK with a page for choosing a network and entering its
-// password; the choice is stored on the board. Restarts to try again if nobody
-// finishes setup in time, e.g. while the router is down.
-void connectWiFi() {
-  WiFi.setHostname(HOSTNAME);
-  WiFiManager wifiManager;
-  wifiManager.setConfigPortalTimeout(SETUP_PORTAL_TIMEOUT_S);
-  wifiManager.setConnectTimeout(20);
-  Serial.println("Connecting to WiFi...");
-  if (!wifiManager.autoConnect(SETUP_NETWORK)) {
-    Serial.println("WiFi setup timed out, restarting.");
-    ESP.restart();
-  }
-  WiFi.setSleep(false);
-  // Connected, so this firmware works: keep it.
-  esp_ota_mark_app_valid_cancel_rollback();
-  Serial.print("Connected: ");
-  Serial.println(WiFi.localIP());
 }
 
 void checkWiFiResetButton() {
@@ -123,7 +98,7 @@ void checkWiFiResetButton() {
     resetPressedSinceMs = millis();
   } else if (millis() - resetPressedSinceMs >= WIFI_RESET_HOLD_MS) {
     Serial.println("Clearing saved WiFi and restarting into setup.");
-    WiFiManager().resetSettings();
+    wifiForgetNetwork();
     ESP.restart();
   }
 }
@@ -156,7 +131,6 @@ void setup() {
   tempSensors.setWaitForConversion(false);
 
   Serial.println("Relay initialized.");
-  connectWiFi();
 
   updatePassword = preferences.getString("otaPass", "").c_str();
   if (!aquarium::validPassword(updatePassword)) {
@@ -165,6 +139,8 @@ void setup() {
   }
   Serial.print("Update password: ");
   Serial.println(updatePassword.c_str());
+
+  wifiSetupBegin(server, HOSTNAME, SETUP_NETWORK, updatePassword);
 
   if (!MDNS.begin(HOSTNAME)) {
     Serial.println("Error setting up mDNS responder!");
@@ -235,22 +211,8 @@ void setup() {
   server.begin();
 }
 
-// Reconnects to the saved network after a drop, backing off up to a
-// minute between tries, and restarts mDNS once the connection is back.
-void maintainWiFi() {
-  if (wifiTimer.due(WiFi.status() == WL_CONNECTED, millis())) {
-    Serial.println("WiFi lost, reconnecting...");
-    WiFi.reconnect();
-  }
-  if (wifiTimer.reconnected()) {
-    Serial.println("WiFi back, restarting mDNS.");
-    MDNS.end();
-    MDNS.begin(HOSTNAME);
-  }
-}
-
 void loop() {
-  maintainWiFi();
+  wifiSetupLoop();
   checkWiFiResetButton();
   pollTemperature();
   server.handleClient();

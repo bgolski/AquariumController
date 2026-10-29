@@ -78,13 +78,15 @@ The ESP32 connects to Wi-Fi, advertises mDNS, and exposes a small HTTP API:
 
 Wi-Fi details are not built into the firmware. They are entered from a phone and stored on the board, so changing networks never needs a reflash.
 
-1. Power the board. If it has no saved network, or cannot reach the saved one within about 20 seconds, it broadcasts an open network called `Aquarium-Setup`.
-2. Join `Aquarium-Setup` from a phone or laptop. A setup page opens (if not, browse to `http://192.168.4.1`).
-3. Choose **Configure WiFi**, pick your network, enter its password and save. The board joins it and stays on it after restarts.
+1. Power the board. With no saved network it broadcasts an open network called `Aquarium-Setup` right away.
+2. Join `Aquarium-Setup` from a phone or laptop. The setup page opens on its own (if not, browse to `http://192.168.4.1`).
+3. Pick your network (or **Other network…** for a hidden one), enter its password and tap **Connect**. The board tests the password while the setup network stays up: a wrong password or a network it cannot see sends you back with the reason, and success shows the network, the board's address and IP, and the update password. The setup network closes when you tap **Done**, or after 2 minutes.
 
-The setup network closes after 5 minutes if nobody uses it, and the board restarts and tries the saved network again, so a router outage does not leave it stuck in setup.
+If a network is saved but the board cannot reach it, it keeps trying and opens `Aquarium-Setup` only after 10 minutes without connecting since it started, closing it again as soon as the saved network is back. A drop after the board has connected never opens it; the board just reconnects.
 
 To switch to a different network later, hold the board's **BOOT** button for 5 seconds while it is running. It forgets the saved network and restarts into setup.
+
+The setup page is `web/setup.html`; the build gzips it into the firmware.
 
 Once connected, the board answers at `http://aquarium-lights.local`.
 
@@ -114,7 +116,7 @@ After one upload over USB, new firmware can be sent over Wi-Fi.
   ```
 
   The board answers `Update installed, restarting` and is back within a few seconds. A wrong password gets `401` and changes nothing.
-- **Rollback:** new firmware is kept only once it reconnects to Wi-Fi. If it crashes or restarts before that, the board goes back to the previous firmware on its own.
+- **Rollback:** new firmware is kept only once it reconnects to Wi-Fi. If it crashes or restarts before that, or has not connected within 10 minutes, the board goes back to the previous firmware on its own.
 - **Recovery:** if the board cannot reach any network, upload over USB as above.
 
 ## Contributing

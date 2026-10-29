@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Aquarium Setup</title>
+<style>
+:root{
+  --bg:#eef3f5; --card:#ffffff; --ink:#0f2a33; --muted:#5d7680; --line:#dbe5e9;
+  --accent:#0e7c86; --accent-ink:#ffffff; --accent-soft:#e3f2f3; --danger:#b3261e;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#0b1418; --card:#12222a; --ink:#e3eef1; --muted:#8aa3ac; --line:#20363f;
+  --accent:#37b3bd; --accent-ink:#06282c; --accent-soft:#163940; --danger:#f2867e;
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.top{position:relative;padding:22px 20px 28px;color:#fff;background:linear-gradient(160deg,#0b5f69,#0e7c86 60%,#1497a0)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;letter-spacing:.2px;max-width:480px;margin:0 auto}
+.bubbles{position:absolute;right:20px;top:14px;opacity:.35}
+.wave{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:14px;display:block}
+.wave path{fill:var(--bg)}
+main{flex:1;width:100%;max-width:480px;margin:0 auto;padding:14px 16px 24px;display:flex;flex-direction:column}
+.view{display:none;flex:1;flex-direction:column;gap:12px}
+.view.on{display:flex}
+h1{font-size:20px;font-weight:600;margin:4px 0 0;overflow-wrap:anywhere}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.net{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;border-top:1px solid var(--line);text-align:left;font-size:15px}
+.net:first-child{border-top:0}
+.net:active{background:var(--accent-soft)}
+.net .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lock{width:12px;height:14px;opacity:.55;flex:none}
+.bars{display:inline-flex;align-items:flex-end;gap:2px;height:12px;flex:none}
+.bars i{width:3px;background:var(--ink);border-radius:1px;opacity:.2}
+.bars i.on{opacity:.75}
+.bars i:nth-child(1){height:4px}.bars i:nth-child(2){height:7px}.bars i:nth-child(3){height:10px}.bars i:nth-child(4){height:12px}
+.other{color:var(--accent);font-weight:500}
+.rescan{align-self:center;color:var(--muted);font-size:13px;padding:6px 10px}
+.back{align-self:flex-start;color:var(--accent);font-size:14px;padding:2px 0}
+.input{display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 14px}
+.input.err{border-color:var(--danger)}
+.input input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:none;border:0;outline:0;padding:12px 0}
+.eye{color:var(--muted);font-size:13px;padding:8px 0 8px 10px}
+.errmsg{color:var(--danger);font-size:13px;margin-top:-4px}
+.btn{margin-top:auto;background:var(--accent);color:var(--accent-ink);text-align:center;border-radius:12px;padding:13px;font-weight:600;width:100%}
+.btn:disabled{opacity:.5}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.ring{width:64px;height:64px;border-radius:50%;border:3px solid var(--accent-soft);border-top-color:var(--accent);animation:spin 1s linear infinite}
+.ring.small{width:28px;height:28px;margin:24px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.check{width:64px;height:64px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center}
+.done{display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:14px}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--line);font-size:14px}
+.kv:first-child{border-top:0}
+.kv>span:first-child{color:var(--muted);flex:none}
+.kv>span:last-child{min-width:0;display:flex;align-items:center;justify-content:flex-end}
+.v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.copy{color:var(--accent);font-size:12px;margin-left:8px;flex:none}
+</style>
+</head>
+<body>
+<header class="top">
+  <svg class="bubbles" width="30" height="34" viewBox="0 0 30 34" fill="none" stroke="#fff" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="26" r="5"/><circle cx="20" cy="12" r="3.5"/><circle cx="12" cy="5" r="2"/></svg>
+  <div class="brand">
+    <svg width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M2 8c3-5 9-6 14-4 2 .8 3.5 2.2 4.5 4-1 1.8-2.5 3.2-4.5 4-5 2-11 1-14-4z"/><path d="M20.5 8 25 4v8z"/><circle cx="7" cy="7" r=".9" fill="#fff"/></svg>
+    Aquarium
+  </div>
+  <svg class="wave" viewBox="0 0 280 14" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8 C 35 0, 70 0, 105 7 S 175 14, 210 7 S 260 2, 280 6 V14 H0z"/></svg>
+</header>
+<main>
+  <section class="view on" id="list">
+    <h1>Choose Wi-Fi</h1>
+    <div class="card" id="nets"><div class="ring small"></div></div>
+    <button class="rescan" id="rescan">↻ Rescan</button>
+  </section>
+
+  <form class="view" id="pass" autocomplete="off">
+    <button type="button" class="back" id="back">‹ Networks</button>
+    <h1 id="ptitle"></h1>
+    <div class="input" id="ssidbox"><input id="ssid" placeholder="Network name" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32"></div>
+    <div class="input" id="pwbox"><input id="pw" type="password" placeholder="Password" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="63"><button type="button" class="eye" id="eye">Show</button></div>
+    <div class="errmsg" id="err" hidden></div>
+    <button class="btn" id="go">Connect</button>
+  </form>
+
+  <section class="view" id="wait">
+    <div class="center">
+      <div class="ring"></div>
+      <h1 id="wtitle" style="font-size:17px"></h1>
+    </div>
+  </section>
+
+  <section class="view" id="ok">
+    <div class="done">
+      <div class="check"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h1 style="font-size:18px">Connected</h1>
+    </div>
+    <div class="card">
+      <div class="kv"><span>Network</span><span><span class="v" id="onet"></span></span></div>
+      <div class="kv"><span>Address</span><span><span class="v mono" id="ohost"></span></span></div>
+      <div class="kv"><span>IP</span><span><span class="v mono" id="oip"></span></span></div>
+      <div class="kv"><span>Update password</span><span><span class="v mono" id="opw"></span><button class="copy" id="copy">Copy</button></span></div>
+    </div>
+    <button class="btn" id="fin">Done</button>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const LOCK = '<svg class="lock" viewBox="0 0 12 14" fill="currentColor" aria-label="Secured"><path d="M3 6V4.5a3 3 0 0 1 6 0V6h.5A1.5 1.5 0 0 1 11 7.5v5A1.5 1.5 0 0 1 9.5 14h-7A1.5 1.5 0 0 1 1 12.5v-5A1.5 1.5 0 0 1 2.5 6zm1.5 0h3V4.5a1.5 1.5 0 0 0-3 0z"/></svg>';
+const ERRORS = {wrong_password: 'Wrong password', not_found: 'Network not found', failed: "Couldn't connect"};
+let chosen = null;  // {ssid, secure}, or null for a hidden network
+
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === id));
+}
+
+function esc(s) {
+  return s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+}
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// GET or POST JSON; resolves to null while the setup network is briefly out of reach.
+async function call(path, body) {
+  try {
+    const r = await fetch(path, body ? {method: 'POST', body: new URLSearchParams(body)} : {cache: 'no-store'});
+    return {status: r.status, data: await r.json()};
+  } catch (e) {
+    return null;
+  }
+}
+
+async function loadNetworks(rescan) {
+  $('nets').innerHTML = '<div class="ring small"></div>';
+  let path = '/setup/networks' + (rescan ? '?rescan=1' : '');
+  let r;
+  for (;;) {
+    r = await call(path);
+    if (r && r.status === 200) break;
+    path = '/setup/networks';
+    await wait(1000);
+  }
+  $('nets').innerHTML = r.data.map((n, i) =>
+    '<button class="net" data-i="' + i + '"><span class="n">' + esc(n.ssid) + '</span>' +
+    (n.secure ? LOCK : '') +
+    '<span class="bars">' + [1, 2, 3, 4].map(b => '<i' + (b <= n.bars ? ' class="on"' : '') + '></i>').join('') + '</span></button>'
+  ).join('') + '<button class="net other" data-i="-1">Other network…</button>';
+  $('nets').querySelectorAll('.net').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i;
+    openPassword(i < 0 ? null : r.data[i]);
+  });
+}
+
+function openPassword(net, error) {
+  chosen = net;
+  $('ptitle').textContent = net ? net.ssid : 'Other network';
+  $('ssidbox').hidden = !!net;
+  $('pwbox').hidden = !!net && !net.secure;
+  $('pwbox').classList.toggle('err', !!error && error !== 'not_found');
+  $('ssidbox').classList.toggle('err', error === 'not_found');
+  $('err').hidden = !error;
+  $('err').textContent = ERRORS[error] || '';
+  show('pass');
+  (net ? $('pw') : $('ssid')).focus();
+}
+
+$('rescan').onclick = () => loadNetworks(true);
+$('back').onclick = () => { $('pw').value = ''; show('list'); };
+$('eye').onclick = () => {
+  const hidden = $('pw').type === 'password';
+  $('pw').type = hidden ? 'text' : 'password';
+  $('eye').textContent = hidden ? 'Hide' : 'Show';
+};
+
+$('pass').onsubmit = async e => {
+  e.preventDefault();
+  const ssid = chosen ? chosen.ssid : $('ssid').value;
+  if (!ssid) return $('ssid').focus();
+  const password = $('pwbox').hidden ? '' : $('pw').value;
+  $('wtitle').textContent = 'Connecting to ' + ssid;
+  show('wait');
+  if (!await call('/setup/connect', {ssid, password})) {
+    return openPassword(chosen, 'failed');
+  }
+  // The setup network can drop for a moment when the board moves it to
+  // the new network's channel, so keep asking until there is an answer.
+  for (;;) {
+    await wait(1000);
+    const r = await call('/setup/status');
+    if (!r || r.data.state === 'connecting') continue;
+    if (r.data.state === 'connected') return connected(r.data);
+    return openPassword(chosen, r.data.state);
+  }
+};
+
+function connected(s) {
+  $('pw').value = '';
+  $('onet').textContent = s.ssid;
+  $('ohost').textContent = s.host;
+  $('oip').textContent = s.ip;
+  $('opw').textContent = s.updatePassword;
+  show('ok');
+}
+
+$('copy').onclick = async () => {
+  const text = $('opw').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // The captive portal browser is not a secure context; fall back to a selection.
+    const t = document.createElement('textarea');
+    t.value = text;
+    t.setAttribute('readonly', '');
+    t.style.position = 'fixed';
+    t.style.opacity = '0';
+    document.body.appendChild(t);
+    t.select();
+    t.setSelectionRange(0, text.length);
+    document.execCommand('copy');
+    t.remove();
+  }
+  $('copy').textContent = 'Copied';
+  setTimeout(() => $('copy').textContent = 'Copy', 1500);
+};
+
+$('fin').onclick = () => {
+  call('/setup/done', {});
+  $('fin').disabled = true;
+};
+
+// Reopened while a result is waiting (e.g. after the phone rejoined the setup network).
+call('/setup/status').then(r => {
+  if (r && r.data.state === 'connected') connected(r.data);
+});
+loadNetworks(false);
+</script>
+</body>
+</html>
